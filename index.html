@@ -1,206 +1,163 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>Tetris...?</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&display=swap');
-    body {
-      font-family: 'Zen Maru Gothic', sans-serif;
-      font-weight: 700;
-      background-color: #fdfdfd;
-      color: #333;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }
-    #game {
-      border: 2px solid #ccc;
-      background: #fff;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    #controls {
-      margin-top: 10px;
-      display: flex;
-      gap: 10px;
-    }
-    button {
-      font-family: 'Zen Maru Gothic', sans-serif;
-      font-weight: 700;
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      background: #f4f4f4;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    #scoreboard {
-      margin-top: 10px;
-      text-align: center;
-      font-weight: 700;
-      font-size: 18px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Tetris ZenMaru Smooth Down</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&display=swap');
+body {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  font-weight: 700;
+  background: linear-gradient(135deg, #f0f4ff, #d4f1f9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+  position: relative;
+  overflow: hidden;
+}
+#game { border: 2px solid #ccc; background: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+#controls { margin-top: 10px; display: flex; gap: 10px; }
+button { font-family: 'Zen Maru Gothic', sans-serif; font-weight: 700; padding: 10px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; background: #f4f4f4; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+#scoreboard { margin-top: 10px; text-align: center; font-weight: 700; font-size: 18px; color: #333; }
+.decor { position: absolute; width: 10px; height: 10px; background: rgba(255,255,255,0.5); border-radius: 50%; animation: float 8s linear infinite; }
+@keyframes float { 0% { transform: translateY(0) translateX(0); } 100% { transform: translateY(-1000px) translateX(50px); } }
+</style>
 </head>
 <body>
-  <canvas id="game" width="180" height="360"></canvas>
-  <div id="controls">
-    <button id="leftBtn">←</button>
-    <button id="rotateBtn">⟳</button>
-    <button id="rightBtn">→</button>
-    <button id="downBtn">↓</button>
-    <button id="dropBtn">⇓</button>
-  </div>
-  <div id="scoreboard">
-    <div>スコア: <span id="score">0</span></div>
-    <div>ハイスコア: <span id="highscore">0</span></div>
-  </div>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const canvas = document.getElementById('game');
-      const ctx = canvas.getContext('2d');
-      const ROWS = 20, COLS = 10, SIZE = 18;
-      canvas.width = COLS * SIZE;
-      canvas.height = ROWS * SIZE;
+<canvas id="game" width="180" height="360"></canvas>
+<div id="controls">
+  <button id="leftBtn">←</button>
+  <button id="rotateBtn">⟳</button>
+  <button id="rightBtn">→</button>
+  <button id="downBtn">↓</button>
+  <button id="dropBtn">⇓</button>
+</div>
+<div id="scoreboard">
+  <div>スコア: <span id="score">0</span></div>
+  <div>ハイスコア: <span id="highscore">0</span></div>
+</div>
+<script>
+// 背景飾り生成
+for(let i=0;i<30;i++){
+  const div=document.createElement('div');
+  div.className='decor';
+  div.style.left=Math.random()*window.innerWidth+'px';
+  div.style.top=Math.random()*window.innerHeight+'px';
+  div.style.width=div.style.height=(5+Math.random()*10)+'px';
+  div.style.animationDuration=(5+Math.random()*5)+'s';
+  document.body.appendChild(div);
+}
 
-      const scoreEl = document.getElementById('score');
-      const highscoreEl = document.getElementById('highscore');
-      let score = 0;
-      let highscore = parseInt(localStorage.getItem('tetrisHighscore')) || 0;
-      highscoreEl.textContent = highscore;
+document.addEventListener('DOMContentLoaded', () => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const ROWS = 20, COLS = 10, SIZE = 18;
+  canvas.width = COLS * SIZE;
+  canvas.height = ROWS * SIZE;
 
-      const shapes = [
-        [[1,1,1,1]],
-        [[1,1],[1,1]],
-        [[0,1,0],[1,1,1]],
-        [[1,0,0],[1,1,1]],
-        [[0,0,1],[1,1,1]],
-        [[1,1,0],[0,1,1]],
-        [[0,1,1],[1,1,0]]
-      ];
-      // 柔らかいパステル系カラー
-      const colors = [
-        '#a8d5ba', // pastel green
-        '#fbc4ab', // pastel peach
-        '#ffdab9', // pastel orange
-        '#c3bef0', // pastel purple
-        '#a0c4ff', // pastel blue
-        '#ffd6a5', // pastel yellow-orange
-        '#b9fbc0'  // pastel mint
-      ];
+  const scoreEl = document.getElementById('score');
+  const highscoreEl = document.getElementById('highscore');
+  let score = 0;
+  let highscore = parseInt(localStorage.getItem('tetrisHighscore')) || 0;
+  highscoreEl.textContent = highscore;
 
-      let board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
-      let piece = null;
-      function newPiece() {
-        const id = Math.floor(Math.random()*shapes.length);
-        piece = {shape: shapes[id], color: colors[id], row: 0, col: 3};
+  const shapes = [
+    [[1,1,1,1]],
+    [[1,1],[1,1]],
+    [[0,1,0],[1,1,1]],
+    [[1,0,0],[1,1,1]],
+    [[0,0,1],[1,1,1]],
+    [[1,1,0],[0,1,1]],
+    [[0,1,1],[1,1,0]]
+  ];
+  const colors = ['#a8d5ba','#fbc4ab','#ffdab9','#c3bef0','#a0c4ff','#ffd6a5','#b9fbc0'];
+
+  let board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+  let piece = null;
+  function newPiece() {
+    const id = Math.floor(Math.random()*shapes.length);
+    piece = {shape: shapes[id], color: colors[id], row: -2, col: 3};
+  }
+
+  function validMove(shape, row, col) {
+    return shape.every((r,i)=>r.every((val,j)=>{
+      if(!val) return true;
+      let x = col+j, y = row+i;
+      return x>=0 && x<COLS && y<ROWS && (y<0 || !board[y][x]);
+    }));
+  }
+
+  function merge() {
+    piece.shape.forEach((r,i)=>r.forEach((val,j)=>{
+      if(val && piece.row+i>=0){ board[piece.row+i][piece.col+j] = piece.color; }
+    }));
+  }
+
+  function rotate() {
+    const rotated = piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse());
+    if(validMove(rotated, piece.row, piece.col)) piece.shape = rotated;
+  }
+
+  function clearLines(){
+    for(let r=ROWS-1;r>=0;r--){
+      if(board[r].every(v=>v)){
+        board.splice(r,1);
+        board.unshift(Array(COLS).fill(0));
+        r++;
+        score += 100;
+        if(score>highscore){ highscore=score; localStorage.setItem('tetrisHighscore', highscore); }
       }
+    }
+    scoreEl.textContent = score;
+    highscoreEl.textContent = highscore;
+  }
 
-      function draw() {
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        board.forEach((row,r)=>row.forEach((val,c)=>{
-          if(val){ ctx.fillStyle=val; ctx.fillRect(c*SIZE,r*SIZE,SIZE,SIZE); }
-        }));
-        if(piece){
-          piece.shape.forEach((row,r)=>row.forEach((val,c)=>{
-            if(val){ ctx.fillStyle=piece.color; ctx.fillRect((piece.col+c)*SIZE,(piece.row+r)*SIZE,SIZE,SIZE); }
-          }));
-        }
-      }
+  let fallInterval = 500; // 通常落下間隔
+  let downPressed = false;
 
-      function validMove(shape, row, col) {
-        return shape.every((r,i)=>r.every((val,j)=>{
-          if(!val) return true;
-          let x = col+j, y = row+i;
-          return x>=0 && x<COLS && y<ROWS && (y<0 || !board[y][x]);
-        }));
-      }
+  function drop(){
+    if(validMove(piece.shape,piece.row+1,piece.col)) piece.row += 1;
+    else { merge(); clearLines(); newPiece(); if(!validMove(piece.shape,piece.row,piece.col)){ alert('ゲームオーバー'); board = Array.from({length: ROWS}, () => Array(COLS).fill(0)); score=0; scoreEl.textContent=score; } }
+  }
 
-      function merge() {
-        piece.shape.forEach((r,i)=>r.forEach((val,j)=>{
-          if(val){ board[piece.row+i][piece.col+j] = piece.color; }
-        }));
-      }
+  function move(dir){ if(validMove(piece.shape,piece.row,piece.col+dir)) piece.col+=dir; }
+  function softDrop(){ drop(); }
+  function hardDrop(){ while(validMove(piece.shape,piece.row+1,piece.col)) piece.row+=1; drop(); }
 
-      function rotate() {
-        const rotated = piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse());
-        if(validMove(rotated, piece.row, piece.col)){
-          piece.shape = rotated;
-        }
-      }
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    board.forEach((r,row)=>r.forEach((v,col)=>{ if(v){ ctx.fillStyle=v; ctx.fillRect(col*SIZE,row*SIZE,SIZE,SIZE); }}));
+    piece.shape.forEach((r,i)=>r.forEach((v,j)=>{ if(v){ ctx.fillStyle=piece.color; ctx.fillRect((piece.col+j)*SIZE,(piece.row+i)*SIZE,SIZE,SIZE); }}));
+  }
 
-      function drop() {
-        if(validMove(piece.shape,piece.row+1,piece.col)){
-          piece.row++;
-        } else {
-          merge();
-          clearLines();
-          newPiece();
-          if(!validMove(piece.shape,piece.row,piece.col)){
-            alert('ゲームオーバー');
-            if(score > highscore){
-              highscore = score;
-              localStorage.setItem('tetrisHighscore', highscore);
-            }
-            score=0;
-            board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
-          }
-        }
-      }
+  function gameLoop(){
+    drop();
+    draw();
+    setTimeout(gameLoop, downPressed ? 50 : fallInterval);
+  }
 
-      function clearLines(){
-        for(let r=ROWS-1;r>=0;r--){
-          if(board[r].every(v=>v)){
-            board.splice(r,1);
-            board.unshift(Array(COLS).fill(0));
-            score+=100;
-            if(score>highscore){
-              highscore=score;
-              localStorage.setItem('tetrisHighscore',highscore);
-            }
-          }
-        }
-        scoreEl.textContent=score;
-        highscoreEl.textContent=highscore;
-      }
+  document.addEventListener('keydown',e=>{
+    if(e.code==='ArrowLeft') move(-1);
+    else if(e.code==='ArrowRight') move(1);
+    else if(e.code==='ArrowDown') downPressed=true;
+    else if(e.code==='Space') rotate();
+    else if(e.code==='ArrowUp') hardDrop();
+  });
 
-      function move(dir){
-        if(validMove(piece.shape,piece.row,piece.col+dir)) piece.col+=dir;
-      }
+  document.addEventListener('keyup',e=>{
+    if(e.code==='ArrowDown') downPressed=false;
+  });
 
-      function softDrop(){
-        if(validMove(piece.shape,piece.row+1,piece.col)) piece.row++;
-      }
+  [['leftBtn',()=>move(-1)],['rightBtn',()=>move(1)],['downBtn',()=>softDrop()],['rotateBtn',()=>rotate()],['dropBtn',()=>hardDrop()]].forEach(([id,fn])=>{
+    const el=document.getElementById(id); if(el) el.addEventListener('pointerdown',fn);
+  });
 
-      function hardDrop(){
-        while(validMove(piece.shape,piece.row+1,piece.col)) piece.row++;
-        drop();
-      }
-
-      // Keyboard controls
-      document.addEventListener('keydown', e => {
-        switch(e.code){
-          case 'ArrowLeft': move(-1); break;
-          case 'ArrowRight': move(1); break;
-          case 'ArrowDown': softDrop(); break;
-          case 'Space': rotate(); break;
-          case 'ArrowUp': hardDrop(); break;
-        }
-      });
-
-      // Touch controls
-      document.getElementById('leftBtn').addEventListener('click',()=>move(-1));
-      document.getElementById('rightBtn').addEventListener('click',()=>move(1));
-      document.getElementById('downBtn').addEventListener('click',()=>softDrop());
-      document.getElementById('rotateBtn').addEventListener('click',()=>rotate());
-      document.getElementById('dropBtn').addEventListener('click',()=>hardDrop());
-
-      newPiece();
-      setInterval(()=>{drop(); draw();},500);
-    });
-  </script>
+  newPiece();
+  gameLoop();
+});
+</script>
 </body>
 </html>
