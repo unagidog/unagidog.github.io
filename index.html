@@ -1,1 +1,193 @@
-aiueo!
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tetris Mobile Friendly</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
+    body {
+      font-family: 'Zen Maru Gothic', sans-serif;
+      background-color: #f9f9f9;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    #game {
+      border: 2px solid #ccc;
+      background: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    #controls {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      font-family: 'Zen Maru Gothic', sans-serif;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      background: #f0f0f0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #scoreboard {
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="180" height="360"></canvas>
+  <div id="controls">
+    <button id="leftBtn">←</button>
+    <button id="rotateBtn">⟳</button>
+    <button id="rightBtn">→</button>
+    <button id="downBtn">↓</button>
+    <button id="dropBtn">⇓</button>
+  </div>
+  <div id="scoreboard">
+    <div>スコア: <span id="score">0</span></div>
+    <div>ハイスコア: <span id="highscore">0</span></div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      const ROWS = 20, COLS = 10, SIZE = 18;
+      canvas.width = COLS * SIZE;
+      canvas.height = ROWS * SIZE;
+
+      const scoreEl = document.getElementById('score');
+      const highscoreEl = document.getElementById('highscore');
+      let score = 0;
+      let highscore = parseInt(localStorage.getItem('tetrisHighscore')) || 0;
+      highscoreEl.textContent = highscore;
+
+      const shapes = [
+        [[1,1,1,1]],
+        [[1,1],[1,1]],
+        [[0,1,0],[1,1,1]],
+        [[1,0,0],[1,1,1]],
+        [[0,0,1],[1,1,1]],
+        [[1,1,0],[0,1,1]],
+        [[0,1,1],[1,1,0]]
+      ];
+      const colors = ['#ff9999','#99ccff','#99ff99','#ffff99','#ffcc99','#cc99ff','#ff99cc'];
+
+      let board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+      let piece = null;
+      function newPiece() {
+        const id = Math.floor(Math.random()*shapes.length);
+        piece = {shape: shapes[id], color: colors[id], row: 0, col: 3};
+      }
+
+      function draw() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        board.forEach((row,r)=>row.forEach((val,c)=>{
+          if(val){ ctx.fillStyle=val; ctx.fillRect(c*SIZE,r*SIZE,SIZE,SIZE); }
+        }));
+        if(piece){
+          piece.shape.forEach((row,r)=>row.forEach((val,c)=>{
+            if(val){ ctx.fillStyle=piece.color; ctx.fillRect((piece.col+c)*SIZE,(piece.row+r)*SIZE,SIZE,SIZE); }
+          }));
+        }
+      }
+
+      function validMove(shape, row, col) {
+        return shape.every((r,i)=>r.every((val,j)=>{
+          if(!val) return true;
+          let x = col+j, y = row+i;
+          return x>=0 && x<COLS && y<ROWS && (y<0 || !board[y][x]);
+        }));
+      }
+
+      function merge() {
+        piece.shape.forEach((r,i)=>r.forEach((val,j)=>{
+          if(val){ board[piece.row+i][piece.col+j] = piece.color; }
+        }));
+      }
+
+      function rotate() {
+        const rotated = piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse());
+        if(validMove(rotated, piece.row, piece.col)){
+          piece.shape = rotated;
+        }
+      }
+
+      function drop() {
+        if(validMove(piece.shape,piece.row+1,piece.col)){
+          piece.row++;
+        } else {
+          merge();
+          clearLines();
+          newPiece();
+          if(!validMove(piece.shape,piece.row,piece.col)){
+            alert('ゲームオーバー');
+            if(score > highscore){
+              highscore = score;
+              localStorage.setItem('tetrisHighscore', highscore);
+            }
+            score=0;
+            board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+          }
+        }
+      }
+
+      function clearLines(){
+        for(let r=ROWS-1;r>=0;r--){
+          if(board[r].every(v=>v)){
+            board.splice(r,1);
+            board.unshift(Array(COLS).fill(0));
+            score+=100;
+            if(score>highscore){
+              highscore=score;
+              localStorage.setItem('tetrisHighscore',highscore);
+            }
+          }
+        }
+        scoreEl.textContent=score;
+        highscoreEl.textContent=highscore;
+      }
+
+      function move(dir){
+        if(validMove(piece.shape,piece.row,piece.col+dir)) piece.col+=dir;
+      }
+
+      function softDrop(){
+        if(validMove(piece.shape,piece.row+1,piece.col)) piece.row++;
+      }
+
+      function hardDrop(){
+        while(validMove(piece.shape,piece.row+1,piece.col)) piece.row++;
+        drop();
+      }
+
+      // Keyboard controls
+      document.addEventListener('keydown', e => {
+        switch(e.code){
+          case 'ArrowLeft': move(-1); break;
+          case 'ArrowRight': move(1); break;
+          case 'ArrowDown': softDrop(); break;
+          case 'Space': rotate(); break;
+          case 'ArrowUp': hardDrop(); break;
+        }
+      });
+
+      // Touch controls
+      document.getElementById('leftBtn').addEventListener('click',()=>move(-1));
+      document.getElementById('rightBtn').addEventListener('click',()=>move(1));
+      document.getElementById('downBtn').addEventListener('click',()=>softDrop());
+      document.getElementById('rotateBtn').addEventListener('click',()=>rotate());
+      document.getElementById('dropBtn').addEventListener('click',()=>hardDrop());
+
+      newPiece();
+      setInterval(()=>{drop(); draw();},500);
+    });
+  </script>
+</body>
+</html>
